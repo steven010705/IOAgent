@@ -24,8 +24,15 @@ st.dataframe(demanda_df, use_container_width=True)
 
 st.subheader("Parámetros del Modelo")
 col1, col2 = st.columns(2)
+min_disponibles = int(demanda_df["demanda_minima"].sum())
 with col1:
-    disponibles = st.number_input("Empleados disponibles", min_value=1, value=25, step=1)
+    disponibles = st.number_input(
+        "Empleados disponibles",
+        min_value=min_disponibles,
+        value=min_disponibles,
+        step=1,
+        help=f"Debe haber al menos {min_disponibles} empleados para cubrir la demanda mínima de turnos.",
+    )
 with col2:
     resolver = st.button("Resolver modelo", type="primary")
 
