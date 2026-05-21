@@ -1,7 +1,7 @@
 # Proyecto Final Investigación de Operaciones
 
 ## Enlace Documento
-[Overleaf - Documento](https://www.overleaf.com/read/xxntmhqngccd#98becb)
+[Overleaf - Documento](https://drive.google.com/file/d/1O9NCYxhKjJz7WkYE2aNCNYKfBSYG9QqC/view?usp=sharing)
 
 ## Enlace Video
 [Canva - Video](https://canva.link/yuwo5oi2osiltk1)
