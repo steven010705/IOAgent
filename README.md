@@ -5,6 +5,7 @@
 ## Enlace Video
 
 ## Enlace Mapa Mental
+[Canva - Mapa Mental](https://canva.link/c6ny6sf47jvptjf)
 
 ### Integrantes
 
