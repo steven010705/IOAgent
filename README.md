@@ -4,7 +4,7 @@
 [Overleaf - Documento](https://www.overleaf.com/read/xxntmhqngccd#98becb)
 
 ## Enlace Video
-[Canva - Video]([https://canva.link/30euakcketz1yvj](https://canva.link/yuwo5oi2osiltk1))
+[Canva - Video](https://canva.link/yuwo5oi2osiltk1)
 
 ## Enlace Mapa Mental
 [Canva - Mapa Mental](https://canva.link/c6ny6sf47jvptjf)
