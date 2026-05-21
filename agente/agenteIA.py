@@ -1,109 +1,100 @@
-from __future__ import annotations
-
 import math
+from typing import Dict
 
-from agente.prompts import PROMPT_BASE
-
-
-def _restricciones_activas(resultado: dict, demanda: dict, maximos: dict, disponibles: int) -> list[str]:
-    activas = []
-
-    manana = resultado["turno_mañana"]
-    tarde = resultado["turno_tarde"]
-    noche = resultado["turno_noche"]
-    total = manana + tarde + noche
-
-    if manana == demanda["manana"]:
-        activas.append("Cobertura mínima de mañana")
-    if tarde == demanda["tarde"]:
-        activas.append("Cobertura mínima de tarde")
-    if noche == demanda["noche"]:
-        activas.append("Cobertura mínima de noche")
-
-    if manana == maximos["manana"]:
-        activas.append("Capacidad máxima de mañana")
-    if tarde == maximos["tarde"]:
-        activas.append("Capacidad máxima de tarde")
-    if noche == maximos["noche"]:
-        activas.append("Capacidad máxima de noche")
-
-    if total == disponibles:
-        activas.append("Disponibilidad total de empleados")
-
-    return activas
+from modelo.modelo_entero import resolver_modelo_entero
 
 
-def _escenario_20(demanda: dict, maximos: dict, disponibles: int) -> str:
-    d_manana = math.ceil(demanda["manana"] * 1.2)
-    d_tarde = math.ceil(demanda["tarde"] * 1.2)
-    d_noche = math.ceil(demanda["noche"] * 1.2)
-    total_requerido = d_manana + d_tarde + d_noche
+def _formato_turno(turno: str) -> str:
+    if turno == "manana":
+        return "mañana"
+    return turno
 
-    factible_capacidad = (
-        d_manana <= maximos["manana"]
-        and d_tarde <= maximos["tarde"]
-        and d_noche <= maximos["noche"]
-    )
-    faltante = max(0, total_requerido - disponibles)
 
-    if not factible_capacidad:
-        return (
-            f"Con +20% de demanda se requerirían (mañana={d_manana}, tarde={d_tarde}, noche={d_noche}), "
-            "pero al menos un turno excede su capacidad máxima actual. "
-            "Se necesitaría ampliar capacidad o rediseñar turnos."
+def analizar_resultados(
+    resultado: dict,
+    demanda: dict,
+    maximos: dict,
+    disponibles: int,
+    costos: dict,
+) -> str:
+    asignados = {
+        "manana": resultado.get("turno_mañana", 0),
+        "tarde": resultado.get("turno_tarde", 0),
+        "noche": resultado.get("turno_noche", 0),
+    }
+    turno_mayor_carga = max(asignados, key=asignados.get)
+    total_demanda = sum(demanda.values())
+    total_capacidad = sum(maximos.values())
+    total_asignados = sum(asignados.values())
+    demanda_20 = {turno: math.ceil(demanda[turno] * 1.2) for turno in demanda}
+    demanda_20_total = sum(demanda_20.values())
+
+    restricciones_activas = []
+    for turno in ["manana", "tarde", "noche"]:
+        if asignados[turno] == demanda[turno]:
+            restricciones_activas.append(f"Turno {_formato_turno(turno)} alcanzó demanda mínima.")
+        if asignados[turno] == maximos[turno]:
+            restricciones_activas.append(f"Turno {_formato_turno(turno)} alcanzó capacidad máxima.")
+    if total_asignados == disponibles:
+        restricciones_activas.append("Disponibilidad total igualada.")
+
+    escenario_text = []
+    if demanda_20_total > total_capacidad:
+        escenario_text.append(
+            "Si demanda aumenta 20%, el nuevo mínimo total excede la capacidad máxima y el escenario no es factible sin más recursos."
         )
-
-    if faltante > 0:
-        return (
-            f"Con +20% de demanda se requerirían {total_requerido} empleados en total, "
-            f"es decir, {faltante} empleados adicionales frente a los {disponibles} disponibles."
+    else:
+        if demanda_20_total > disponibles:
+            adicional = demanda_20_total - disponibles
+            escenario_text.append(
+                f"Si demanda aumenta 20%, podrían requerirse {adicional} empleados adicionales para mantener la nueva demanda mínima."
+            )
+        else:
+            escenario_text.append(
+                "Si demanda aumenta 20%, el modelo puede ajustar la asignación con la dotación actual dentro de la capacidad máxima."
+            )
+        nuevo_resultado = resolver_modelo_entero(
+            demanda=demanda_20,
+            costos=costos,
+            maximos=maximos,
+            disponibles=disponibles,
         )
+        if nuevo_resultado.get("estado") != "Optimal":
+            escenario_text.append(
+                "Con la misma dotación actual, el modelo no alcanza solución óptima en el escenario 20% mayor, lo que sugiere que hace falta más personal o mayor capacidad."
+            )
 
-    return (
-        f"Con +20% de demanda se requerirían {total_requerido} empleados en total y aún sería factible "
-        "con la disponibilidad y capacidades actuales."
-    )
-
-
-def analizar_resultados(resultado: dict, demanda: dict, maximos: dict, disponibles: int) -> str:
-    if resultado.get("estado") != "Optimal":
-        return "No se puede interpretar una solución no óptima."
-
-    _ = PROMPT_BASE.format(resultado=resultado)
-    # El prompt queda disponible como plantilla de referencia para integrar un LLM externo
-    # sin alterar el flujo: primero modelo matemático, luego interpretación.
-
-    activas = _restricciones_activas(resultado, demanda, maximos, disponibles)
-    escenario = _escenario_20(demanda, maximos, disponibles)
-
-    manana = resultado["turno_mañana"]
-    tarde = resultado["turno_tarde"]
-    noche = resultado["turno_noche"]
-    costo = resultado["costo"]
-
-    mayor_turno = max(
-        [("mañana", manana), ("tarde", tarde), ("noche", noche)],
-        key=lambda x: x[1],
-    )[0]
-
-    lineas = [
-        "### ANÁLISIS",
-        f"La solución óptima asigna {manana} en mañana, {tarde} en tarde y {noche} en noche, con costo total {costo}.",
-        f"La mayor carga operativa está en el turno {mayor_turno}.",
+    salida = [
+        "ANÁLISIS:",
+        f"La mayor carga se concentra en el turno {_formato_turno(turno_mayor_carga)}.",
+        "El resultado es óptimo porque cumple la demanda mínima de cada turno, utiliza exactamente todos los empleados disponibles y minimiza el costo total.",
         "",
-        "### RESTRICCIONES ACTIVAS",
-        ", ".join(activas) if activas else "No se detectaron restricciones activas en igualdad.",
-        "",
-        "### MEJORAS",
-        "- Evaluar personal temporal o flexible para picos en el turno de mayor carga.",
-        "- Analizar esquemas de incentivos para turnos de mayor costo y rotación.",
-        "- Simular sensibilidad de costos ante cambios de disponibilidad total.",
-        "",
-        "### ESCENARIO (+20% DEMANDA)",
-        escenario,
-        "",
-        "### RECOMENDACIÓN GERENCIAL",
-        "Mantener seguimiento semanal de demanda por turno y preparar un plan de contingencia para incrementos súbitos.",
+        "RESTRICCIONES ACTIVAS:",
     ]
+    if restricciones_activas:
+        salida.extend(restricciones_activas)
+    else:
+        salida.append("No hay restricciones de demanda o capacidad exactamente activas, salvo la igualdad de disponibilidad.")
 
-    return "\n".join(lineas)
+    salida.extend([
+        "",
+        "MEJORAS:",
+        "Evaluar personal temporal en los turnos con mayor carga.",
+        "Revisar los costos unitarios por turno para confirmar si la asignación refleja correctamente el costo marginal.",
+        "Considerar escenarios múltiples si la demanda varía con frecuencia."
+    ])
+
+    salida.extend([
+        "",
+        "ESCENARIO:",
+    ])
+    salida.extend(escenario_text)
+
+    salida.extend([
+        "",
+        "RECOMENDACIÓN:",
+        "Redistribuir recursos en horas pico y priorizar los turnos de menor costo para empleados adicionales.",
+        "Usar este agente como apoyo para comparar cambios en disponibilidad versus demanda."
+    ])
+
+    return "\n".join(salida)

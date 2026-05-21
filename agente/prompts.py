@@ -17,4 +17,46 @@ No inventes datos.
 No modifiques el modelo matemático.
 No reemplaces cálculos.
 Solo interpreta resultados reales.
+
+---------------------------------------------------
+
+# SALIDA ESPERADA DEL AGENTE
+
+ANÁLISIS:
+
+La mayor carga se concentra en el turno tarde.
+
+RESTRICCIONES ACTIVAS:
+
+Turno tarde alcanzó capacidad máxima.
+
+MEJORAS:
+
+Evaluar personal temporal.
+
+ESCENARIO:
+
+Si demanda aumenta 20%, podrían requerirse dos empleados adicionales.
+
+RECOMENDACIÓN:
+
+Redistribuir recursos en horas pico.
+
+---------------------------------------------------
+
+# CRITERIOS DE ÉXITO
+
+✓ Modelo ejecuta correctamente
+
+✓ Variables enteras
+
+✓ Restricciones explícitas
+
+✓ Resultados verificables
+
+✓ Agente interpreta resultados reales
+
+✓ Interfaz funcional
+
+✓ Código modular
 """.strip()

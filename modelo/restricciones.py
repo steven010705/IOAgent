@@ -10,4 +10,5 @@ def agregar_restricciones(modelo: LpProblem, x, demanda: dict, maximos: dict, di
     modelo += x["tarde"] <= maximos["tarde"], "Capacidad_Tarde_Maxima"
     modelo += x["noche"] <= maximos["noche"], "Capacidad_Noche_Maxima"
 
-    modelo += x["manana"] + x["tarde"] + x["noche"] <= disponibles, "Disponibilidad_Total"
+    # Ahora se fuerza el uso de todos los empleados disponibles: igualdad
+    modelo += x["manana"] + x["tarde"] + x["noche"] == disponibles, "Disponibilidad_Total"
